@@ -59,7 +59,45 @@ void setup(void) {
 */
 /**************************************************************************/
 void loop(void) {
+
+
   String s = Serial.readString();
+
+
+
+  /*
+    expects a string representation of the following json object (without the comments):
+    {
+      "output":0, // index of the output [0..2]
+      "mode":0, // 0-integer, 1-fractional, 2-multisynth 
+      "pll":0,  // 0-PLLA, 1-PLLB
+      "mult":27, // 25MHz multiplier [24..36]
+      "multNum":0, // multiplier numerator [0..1048575]
+      "multDen":1, // multiplier denominator [1..1048575]
+      "div": 6, // integer divider (preferably even number)
+      "divNum": 0,  // divider numerator [0..1048575]
+      "divDen": 1,  // divider denominator [1..1048575]
+      "rDivPow2":0, // power of 2 - R divider [0..7]
+      "resOutputs": 1   // reset outputs on frequency change 0-false, 1-true
+    }
+
+    for example to get 8kHz on output 0, enter:
+    {   
+      "output":0,   
+      "mode":2,   
+      "pll":0,   
+      "mult":27,   
+      "multNum":3049,   
+      "multDen":3125,   
+      "div": 1366,   
+      "divNum": 0,   
+      "divDen": 1,   
+      "rDivPow2":6,   
+      "resPll": 1 
+      }
+
+  */
+
   delay(200);
   if (s != "") {
     JsonDocument doc;
@@ -121,7 +159,7 @@ void loop(void) {
       return;
     }
 
-    if(div < 1) {
+    if (div < 1) {
       Serial.println("DIV value " + String(div) + " can't be 0 or negative. Aborting.");
       return;
     }
@@ -156,9 +194,6 @@ void loop(void) {
     if (mode == 0) {
 
       /* INTEGER ONLY MODE --> most accurate output */
-      /* Setup selected PLL to integer only mode @ (25*mult)MHz (must be 600..900MHz) */
-      /* Set Multisynth 0 to 112.5MHz using integer only mode (div by 4/6/8) */
-      /* 25MHz * 36 = 900 MHz, then 900 MHz / 8 = 112.5 MHz */
       Serial.println("Set " + plls + " to " + String(25 * mult) + "MHz");
       clockgen.setupPLLInt((si5351PLL_t)pll, mult);
       Serial.println("Using " + plls + " set output #" + String(output) + " to " + String(25 * mult / (double)div) + "MHz");
@@ -173,12 +208,8 @@ void loop(void) {
     }
 
     if (mode == 2) {
-      /* Multisynth 2 is not yet used and won't be enabled, but can be */
-      /* Use PLLB @ 616.66667MHz, then divide by 900 -> 685.185 KHz */
-      /* then divide by 64 for 10.706 KHz */
-      /* configured using either PLL in either integer or fractional mode */
-
-      Serial.println("Set Output #"+String(output)+" to "+String(1024.0 * 25.0 * (double)(mult + multNum / (double)multDen) / (double)(div + divNum / (double)divDen) / (double)(1 << rDivPow2))+" kHz");
+      // Multisynth
+      Serial.println("Set Output #" + String(output) + " to " + String(1024.0 * 25.0 * (double)(mult + multNum / (double)multDen) / (double)(div + divNum / (double)divDen) / (double)(1 << rDivPow2)) + " kHz");
       clockgen.setupRdiv(output, (si5351RDiv_t)rDivPow2);
     }
 
